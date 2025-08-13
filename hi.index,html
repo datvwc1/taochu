@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Flowing Code Environment - Final Version</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <script src="https://unpkg.com/@phosphor-iconsa
+            --hover-accent: #0088dd;
+            --icon-color: #e0e0e0;
+            --text-color: #ffffff;
+            --input-bg: #333;
+            --border-color: #444;
+            --fieldset-bg: rgba(255, 255, 255, 0.05);
+        }
+        body {
+            font-family: Monospace;
+            background-color: #000;
+            color: var(--text-color);
+            margin: 0px;
+            overflow: hidden;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            z-index: 100;
+            color: #aaa;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: var(--controls-bg);
+            backdrop-filter: blur(10px);
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            cursor: move;
+            z-index: 101;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 420px;
+        }
+        fieldset {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            background: var(--fieldset-bg);
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 0;
+        }
+        legend {
+            padding: 0 10px;
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--primary-accent);
+        }
+        .control-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+        }
+        .control-item i {
+            font-size: 22px;
+            color: var(--icon-color);
+            flex-shrink: 0;
+        }
+        .control-item .tooltip {
+            visibility: hidden;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 125%;
+            background-color: #000;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .control-item:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        #controls input[type="range"]{
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        #controls input[type="range"]::-webkit-slider-runnable-track { background: #444; height: 4px; border-radius: 2px; }
+        #controls input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; margin-top: -6px; background-color: var(--primary-accent); height: 16px; width: 16px; border-radius: 50%; }
+        #controls button, #controls select, #controls label[for="imageUpload"] {
+            cursor: pointer;
+            background-color: var(--primary-accent);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            font-size: 14px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+            gap: 8px;
+        }
+        #controls button:hover, #controls select:hover, #controls label[for="imageUpload"]:hover { background-color: var(--hover-accent); }
+        #recordBtn.recording { background-color: #ff4136; }
+        .full-width { grid-column: 1 / -1; }
+        textarea { width: 100%; height: 50px; background: var(--input-bg); border: 1px solid var(--border-color); color: white; border-radius: 5px; padding: 5px; resize: vertical; }
+        #imageUpload { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="info">Particle Art Engine</div>
+
+    <div id="controls">
+        <fieldset>
+            <legend>Tạo Hình</legend>
+            <div class="control-item full-width">
+                <textarea id="wordInput">GEMINI</textarea>
+                <span class="tooltip">Nhập văn bản. Enter để xuống dòng.</span>
+            </div>
+            <div class="control-item full-width">
+                <button id="formWordBtn"><i class="ph-bold ph-magic-wand"></i> Chữ</button>
+                <button id="formImageBtn"><i class="ph-bold ph-image"></i> Ảnh</button>
+                <button id="releaseBtn"><i class="ph-bold ph-sparkle"></i> Tan Rã</button>
+            </div>
+        </fieldset>
+        
+        <fieldset>
+            <legend>Thuộc tính Chữ & Ảnh</legend>
+             <div class="control-item">
+                <i class="ph-bold ph-text-aa"></i><select id="fontSelect"></select>
+                <span class="tooltip">Kiểu chữ</span>
+            </div>
+            <div class="control-item">
+                <i class="ph-bold ph-paint-brush"></i><input type="color" id="colorInput" value="#00ffff">
+                <span class="tooltip">Màu chữ (cho chế độ chữ)</span>
+            </div>
+            <div class="control-item">
+                <i class="ph-bold ph-text-h"></i><input type="range" id="letterSpacing" min="0" max="20" step="1" value="5">
+                <span class="tooltip">Giãn cách chữ</span>
+            </div>
+            <div class="control-item">
+                <i class="ph-bold ph-squares-four"></i><input type="range" id="imageResolution" min="20" max="250" step="10" value="120">
+                <span class="tooltip">Độ phân giải ảnh</span>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Thuộc tính Hạt & Hiệu ứng</legend>
+            <div class="control-item">
+                <i class="ph-bold ph-atom"></i><input type="range" id="particleSize" min="0.5" max="5" step="0.1" value="2.5">
+                <span class="tooltip">Kích thước hạt</span>
+            </div>
+            <div class="control-item">
+                <i class="ph-bold ph-shooting-star"></i><input type="range" id="lerpSpeed" min="0.01" max="0.1" step="0.005" value="0.04">
+                <span class="tooltip">Tốc độ chuyển động</span>
+            </div>
+            <div class="control-item">
+                <i class="ph-bold ph-sun"></i><input type="range" id="bloomStrength" min="0" max="3" step="0.1" value="1.0">
+                <span class="tooltip">Độ sáng Aura</span>
+            </div>
+             <div class="control-item">
+                <i class="ph-bold ph-arrows-out-simple"></i><input type="range" id="bloomRadius" min="0" max="1" step="0.05" value="0.4">
+                <span class="tooltip">Bán kính Aura</span>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Nền</legend>
+            <div class="control-item">
+                <i class="ph-bold ph-power"></i><input type="checkbox" id="bgToggle" checked>
+                <span class="tooltip">Bật/Tắt nền</span>
+            </div>
+            <div class="control-item">
+                <i class="ph-bold ph-wind"></i><input type="range" id="bgSpeed" min="0" max="10" step="0.5" value="2">
+                <span class="tooltip">Tốc độ nền</span>
+            </div>
+            <div class="control-item">
+                <i class="ph-bold ph-dots-nine"></i><input type="range" id="bgDensity" min="0" max="5000" step="100" value="1500">
+                <span class="tooltip">Mật độ nền</span>
+            </div>
+             <div class="control-item">
+                <i class="ph-bold ph-text-b"></i><input type="range" id="bgSize" min="1" max="20" step="1" value="10">
+                <span class="tooltip">Kích thước nền</span>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Công cụ</legend>
+            <div class="control-item full-width">
+                <label for="imageUpload" class="custom-file-upload"><i class="ph-bold ph-upload-simple"></i> Tải ảnh</label>
+                <input type="file" id="imageUpload" accept="image/*">
+            </div>
+            <div class="control-item full-width">
+                 <button id="recordBtn"><i class="ph-bold ph-video-camera"></i></button>
+                 <button id="stopBtn"><i class="ph-bold ph-download-simple"></i></button>
+            </div>
+        </fieldset>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FontLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/TextGeometry.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ccapture.js@1.1.0/build/CCapture.all.min.js"></script>
+
+    <script>
+        // --- Drag and Drop Logic ---
+        const controlsPanel = document.getElementById('controls');
+        let isDragging = false;
+        let offset = { x: 0, y: 0 };
+        controlsPanel.addEventListener('mousedown', (e) => {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'LABEL' && !e.target.closest('button')) {
+                isDragging = true;
+                offset.x = e.clientX - controlsPanel.offsetLeft;
+                offset.y = e.clientY - controlsPanel.offsetTop;
+                controlsPanel.style.cursor = 'grabbing';
+            }
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                controlsPanel.style.left = `${e.clientX - offset.x}px`;
+                controlsPanel.style.top = `${e.clientY - offset.y}px`;
+                controlsPanel.style.bottom = 'auto';
+                controlsPanel.style.right = 'auto';
+            }
+        });
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            controlsPanel.style.cursor = 'move';
+        });
+
+        // --- Three.js Logic ---
+        let scene, camera, renderer, controls, composer, bloomPass;
+        let mainParticles, backgroundChars;
+        let particlePositions, particleColors, originalPositions, targetPositions;
+        const PARTICLE_COUNT = 80000;
+        let isForming = false;
+        let capturer;
+        const fonts = new Map();
+        let loadedImage = null;
+
+        const config = {
+            word: 'GEMINI',
+            color: 0x00ffff,
+            fontName: 'helvetiker_bold',
+            letterSpacing: 5,
+            backgroundDensity: 1500,
+            backgroundSpeed: 2,
+            backgroundSize: 10,
+            backgroundOpacity: 0.2,
+            imageResolution: 120,
+            particleSize: 2.5,
+            lerpSpeed: 0.04
+        };
+
+        const ui = {
+            wordInput: document.getElementById('wordInput'),
+            formWordBtn: document.getElementById('formWordBtn'),
+            releaseBtn: document.getElementById('releaseBtn'),
+            colorInput: document.getElementById('colorInput'),
+            recordBtn: document.getElementById('recordBtn'),
+            stopBtn: document.getElementById('stopBtn'),
+            bloomStrengthSlider: document.getElementById('bloomStrength'),
+            bloomRadiusSlider: document.getElementById('bloomRadius'),
+            bgDensitySlider: document.getElementById('bgDensity'),
+            bgSpeedSlider: document.getElementById('bgSpeed'),
+            bgSizeSlider: document.getElementById('bgSize'),
+            bgOpacitySlider: document.getElementById('bgOpacity'),
+            fontSelect: document.getElementById('fontSelect'),
+            letterSpacingSlider: document.getElementById('letterSpacing'),
+            imageUpload: document.getElementById('imageUpload'),
+            formImageBtn: document.getElementById('formImageBtn'),
+            imageResolutionSlider: document.getElementById('imageResolution'),
+            particleSizeSlider: document.getElementById('particleSize'),
+            lerpSpeedSlider: document.getElementById('lerpSpeed'),
+            bgToggle: document.getElementById('bgToggle'),
+        };
+
+        function setupEventListeners() {
+            ui.wordInput.addEventListener('input', (e) => config.word = e.target.value);
+            ui.formWordBtn.addEventListener('click', formWord);
+            ui.formImageBtn.addEventListener('click', formImage);
+            ui.releaseBtn.addEventListener('click', releaseWord);
+            ui.colorInput.addEventListener('input', (e) => config.color = new THREE.Color(e.target.value).getHex());
+            ui.recordBtn.addEventListener('click', startRecording);
+            ui.stopBtn.addEventListener('click', stopRecording);
+            ui.bloomStrengthSlider.addEventListener('input', (e) => bloomPass.strength = Number(e.target.value));
+            ui.bloomRadiusSlider.addEventListener('input', (e) => bloomPass.radius = Number(e.target.value));
+            ui.bgDensitySlider.addEventListener('input', (e) => {
+                config.backgroundDensity = Number(e.target.value);
+                resetBackgroundChars();
+            });
+            ui.bgSpeedSlider.addEventListener('input', (e) => config.backgroundSpeed = Number(e.target.value));
+            ui.bgSizeSlider.addEventListener('input', (e) => {
+                config.backgroundSize = Number(e.target.value);
+                resetBackgroundChars();
+            });
+            ui.bgToggle.addEventListener('change', (e) => {
+                backgroundChars.visible = e.target.checked;
+            });
+            ui.fontSelect.addEventListener('change', (e) => config.fontName = e.target.value);
+            ui.letterSpacingSlider.addEventListener('input', (e) => config.letterSpacing = Number(e.target.value));
+            ui.imageUpload.addEventListener('change', handleImageUpload);
+            ui.imageResolutionSlider.addEventListener('input', (e) => config.imageResolution = Number(e.target.value));
+            ui.particleSizeSlider.addEventListener('input', (e) => mainParticles.material.size = Number(e.target.value));
+            ui.lerpSpeedSlider.addEventListener('input', (e) => config.lerpSpeed = Number(e.target.value));
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 4000);
+            camera.position.z = 800;
+            renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            const renderScene = new THREE.RenderPass(scene, camera);
+            bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloomPass.threshold = 0;
+            bloomPass.strength = Number(ui.bloomStrengthSlider.value);
+            bloomPass.radius = Number(ui.bloomRadiusSlider.value);
+            composer = new THREE.EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+
+            loadFonts();
+            setupEventListeners();
+        }
+
+        function loadFonts() {
+            const fontLoader = new THREE.FontLoader();
+            const fontList = [
+                { name: 'Mạnh mẽ', value: 'helvetiker_bold', url: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_bold.typeface.json' },
+                { name: 'Mềm mại', value: 'gentilis_regular', url: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/gentilis_regular.typeface.json' },
+                { name: 'Công nghệ', value: 'droid_sans_mono_regular', url: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/droid/droid_sans_mono_regular.typeface.json'}
+            ];
+            
+            fontList.forEach(fontData => {
+                 const option = document.createElement('option');
+                 option.value = fontData.value;
+                 option.textContent = fontData.name;
+                 ui.fontSelect.appendChild(option);
+            });
+
+            const fontPromises = fontList.map(fontData => {
+                return new Promise((resolve) => {
+                    fontLoader.load(fontData.url, (font) => {
+                        fonts.set(fontData.value, font);
+                        resolve();
+                    });
+                });
+            });
+
+            Promise.all(fontPromises).then(() => {
+                createMainParticles();
+                createBackgroundChars(config.backgroundDensity);
+                animate();
+            });
+        }
+
+        function createMainParticles() {
+            const geometry = new THREE.BufferGeometry();
+            particlePositions = new Float32Array(PARTICLE_COUNT * 3);
+            particleColors = new Float32Array(PARTICLE_COUNT * 3);
+            originalPositions = new Float32Array(PARTICLE_COUNT * 3);
+            targetPositions = new Float32Array(PARTICLE_COUNT * 3);
+
+            const initialColor = new THREE.Color(config.color);
+
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const i3 = i * 3;
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                particlePositions[i3] = x;
+                particlePositions[i3 + 1] = y;
+                particlePositions[i3 + 2] = z;
+                originalPositions[i3] = x;
+                originalPositions[i3 + 1] = y;
+                originalPositions[i3 + 2] = z;
+                initialColor.toArray(particleColors, i3);
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+            const material = new THREE.PointsMaterial({
+                size: config.particleSize,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.9,
+                sizeAttenuation: true,
+                vertexColors: true
+            });
+            mainParticles = new THREE.Points(geometry, material);
+            scene.add(mainParticles);
+        }
+        
+        function createBackgroundChars(count) {
+            if (count === 0 || !fonts.has('droid_sans_mono_regular')) return;
+            backgroundChars = new THREE.Group();
+            const chars = '01';
+            const material = new THREE.MeshBasicMaterial({ color: 0x008800, transparent: true, opacity: config.backgroundOpacity });
+
+            for (let i = 0; i < count; i++) {
+                const char = chars[Math.floor(Math.random() * chars.length)];
+                const geometry = new THREE.TextGeometry(char, { font: fonts.get('droid_sans_mono_regular'), size: config.backgroundSize, height: 0.1 });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(
+                    (Math.random() - 0.5) * 2500,
+                    (Math.random() - 0.5) * 2000,
+                    (Math.random() - 0.5) * 2500
+                );
+                backgroundChars.add(mesh);
+            }
+            scene.add(backgroundChars);
+        }
+
+        function resetBackgroundChars() {
+            if(backgroundChars) scene.remove(backgroundChars);
+            createBackgroundChars(config.backgroundDensity);
+        }
+
+        function samplePointsFromGeometry(geometry, count) {
+            const points = [];
+            const position = geometry.attributes.position;
+            const randomPointInTriangle = (pA, pB, pC) => {
+                let s = Math.random(), t = Math.random();
+                if (s + t > 1) { s = 1 - s; t = 1 - t; }
+                const a = 1 - s - t, b = s, c = t;
+                const point = new THREE.Vector3();
+                point.addScaledVector(pA, a).addScaledVector(pB, b).addScaledVector(pC, c);
+                return point;
+            }
+            for (let i = 0; i < count; i++) {
+                const index = Math.floor(Math.random() * (position.count / 3)) * 3;
+                const vA = new THREE.Vector3().fromBufferAttribute(position, index);
+                const vB = new THREE.Vector3().fromBufferAttribute(position, index + 1);
+                const vC = new THREE.Vector3().fromBufferAttribute(position, index + 2);
+                points.push(randomPointInTriangle(vA, vB, vC));
+            }
+            return points;
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const image = new Image();
+                image.onload = () => {
+                    loadedImage = image;
+                    document.querySelector('label[for="imageUpload"]').style.backgroundColor = '#4CAF50';
+                };
+                image.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function formImage() {
+            if (!loadedImage) { alert("Vui lòng tải ảnh lên trước!"); return; }
+            isForming = true;
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const maxDim = config.imageResolution;
+            const aspect = loadedImage.width / loadedImage.height;
+            let width, height;
+            if (aspect >= 1) { width = maxDim; height = maxDim / aspect; } 
+            else { height = maxDim; width = maxDim * aspect; }
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(loadedImage, 0, 0, width, height);
+            const imageData = ctx.getImageData(0, 0, width, height).data;
+            const imagePoints = [];
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const i = (y * width + x) * 4;
+                    if (imageData[i + 3] > 128) {
+                        imagePoints.push({
+                            x: (x - width / 2) * 5,
+                            y: -(y - height / 2) * 5,
+                            z: (Math.random() - 0.5) * 50,
+                            r: imageData[i] / 255,
+                            g: imageData[i + 1] / 255,
+                            b: imageData[i + 2] / 255,
+                        });
+                    }
+                }
+            }
+            if (imagePoints.length === 0) return;
+            const colors = mainParticles.geometry.attributes.color.array;
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const i3 = i * 3;
+                const point = imagePoints[i % imagePoints.length];
+                targetPositions[i3] = point.x;
+                targetPositions[i3 + 1] = point.y;
+                targetPositions[i3 + 2] = point.z;
+                colors[i3] = point.r;
+                colors[i3 + 1] = point.g;
+                colors[i3 + 2] = point.b;
+            }
+            mainParticles.geometry.attributes.color.needsUpdate = true;
+        }
+
+        function formWord() {
+            if (!config.word) return;
+            isForming = true;
+            const font = fonts.get(config.fontName);
+            if (!font) return;
+            const lines = config.word.split('\n');
+            const geometries = [];
+            let yOffset = 0;
+            const lineHeight = 140; 
+            lines.forEach((line) => {
+                let xOffset = 0;
+                const lineGeometries = [];
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    if (char === ' ') { xOffset += 50; continue; }
+                    const charGeo = new THREE.TextGeometry(char, {font, size: 120, height: 5, curveSegments: 12, bevelEnabled: true, bevelThickness: 8, bevelSize: 4, bevelOffset: 0, bevelSegments: 5});
+                    charGeo.computeBoundingBox();
+                    const charWidth = charGeo.boundingBox.max.x - charGeo.boundingBox.min.x;
+                    charGeo.translate(xOffset, 0, 0);
+                    lineGeometries.push(charGeo);
+                    xOffset += charWidth + config.letterSpacing;
+                }
+                const lineGroup = new THREE.Group();
+                lineGeometries.forEach(g => lineGroup.add(new THREE.Mesh(g)));
+                const lineBox = new THREE.Box3().setFromObject(lineGroup);
+                const lineCenter = lineBox.getCenter(new THREE.Vector3());
+                lineGeometries.forEach(g => g.translate(-lineCenter.x, yOffset, 0));
+                geometries.push(...lineGeometries);
+                yOffset -= lineHeight;
+            });
+            if (geometries.length === 0) { releaseWord(); return; };
+            const mergedGeometry = THREE.BufferGeometryUtils.mergeBufferGeometries(geometries, false);
+            const finalBox = new THREE.Box3().setFromBufferAttribute(mergedGeometry.attributes.position);
+            const finalCenter = finalBox.getCenter(new THREE.Vector3());
+            mergedGeometry.translate(-finalCenter.x, -finalCenter.y, -finalCenter.z);
+            const sampledPoints = samplePointsFromGeometry(mergedGeometry, PARTICLE_COUNT);
+            const colors = mainParticles.geometry.attributes.color.array;
+            const wordColor = new THREE.Color(config.color);
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const i3 = i * 3;
+                const point = sampledPoints[i % sampledPoints.length];
+                targetPositions[i3] = point.x;
+                targetPositions[i3 + 1] = point.y;
+                targetPositions[i3 + 2] = point.z;
+                wordColor.toArray(colors, i3);
+            }
+            mainParticles.geometry.attributes.color.needsUpdate = true;
+            mergedGeometry.dispose();
+            geometries.forEach(g => g.dispose());
+        }
+
+        function releaseWord() {
+            isForming = false;
+            for (let i = 0; i < PARTICLE_COUNT * 3; i++) {
+                targetPositions[i] = originalPositions[i];
+            }
+        }
+
+        function startRecording() {
+            capturer = new CCapture({ format: 'webm', framerate: 60, name: `animation` });
+            capturer.start();
+            ui.recordBtn.classList.add("recording");
+        }
+
+        function stopRecording() {
+            if (capturer) {
+                capturer.stop();
+                capturer.save();
+                capturer = null;
+                ui.recordBtn.classList.remove("recording");
+            }
+        }
+
+        function onWindowResize() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            composer.setSize(width, height);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const positions = mainParticles.geometry.attributes.position.array;
+            const lerpFactor = config.lerpSpeed; 
+            for (let i = 0; i < PARTICLE_COUNT * 3; i++) {
+                positions[i] += (targetPositions[i] - positions[i]) * lerpFactor;
+            }
+            mainParticles.geometry.attributes.position.needsUpdate = true;
+            if (isForming) {
+                 mainParticles.rotation.y += 0.001;
+            } else {
+                 mainParticles.rotation.y += 0.0002;
+                 mainParticles.rotation.x += 0.0002;
+            }
+            if(backgroundChars && backgroundChars.visible){
+                backgroundChars.children.forEach(char => {
+                    char.position.y -= config.backgroundSpeed;
+                    if(char.position.y < -1000) char.position.y = 1000;
+                });
+            }
+            controls.update();
+            composer.render();
+            if (capturer) {
+                capturer.capture(renderer.domElement);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

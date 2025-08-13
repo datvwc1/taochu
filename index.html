@@ -4,7 +4,11 @@
     <title>Flowing Code Environment - Final Version</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-    <script src="https://unpkg.com/@phosphor-iconsa
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --controls-bg: rgba(20, 20, 20, 0.9);
+            --primary-accent: #00aaff;
             --hover-accent: #0088dd;
             --icon-color: #e0e0e0;
             --text-color: #ffffff;
@@ -109,7 +113,7 @@
             padding: 8px 12px;
             font-size: 14px;
             border-radius: 5px;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s, opacity 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -117,6 +121,11 @@
             gap: 8px;
         }
         #controls button:hover, #controls select:hover, #controls label[for="imageUpload"]:hover { background-color: var(--hover-accent); }
+        #controls button.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: var(--primary-accent) !important;
+        }
         #recordBtn.recording { background-color: #ff4136; }
         .full-width { grid-column: 1 / -1; }
         textarea { width: 100%; height: 50px; background: var(--input-bg); border: 1px solid var(--border-color); color: white; border-radius: 5px; padding: 5px; resize: vertical; }
@@ -257,7 +266,7 @@
         let scene, camera, renderer, controls, composer, bloomPass;
         let mainParticles, backgroundChars;
         let particlePositions, particleColors, originalPositions, targetPositions;
-        const PARTICLE_COUNT = 80000;
+        const PARTICLE_COUNT = 120000;
         let isForming = false;
         let capturer;
         const fonts = new Map();
@@ -266,7 +275,7 @@
         const config = {
             word: 'GEMINI',
             color: 0x00ffff,
-            fontName: 'helvetiker_bold',
+            fontName: 'gentilis_regular', // Default font, changed for better Vietnamese support
             letterSpacing: 5,
             backgroundDensity: 1500,
             backgroundSpeed: 2,
@@ -280,6 +289,7 @@
         const ui = {
             wordInput: document.getElementById('wordInput'),
             formWordBtn: document.getElementById('formWordBtn'),
+            formImageBtn: document.getElementById('formImageBtn'),
             releaseBtn: document.getElementById('releaseBtn'),
             colorInput: document.getElementById('colorInput'),
             recordBtn: document.getElementById('recordBtn'),
@@ -289,16 +299,26 @@
             bgDensitySlider: document.getElementById('bgDensity'),
             bgSpeedSlider: document.getElementById('bgSpeed'),
             bgSizeSlider: document.getElementById('bgSize'),
-            bgOpacitySlider: document.getElementById('bgOpacity'),
             fontSelect: document.getElementById('fontSelect'),
             letterSpacingSlider: document.getElementById('letterSpacing'),
             imageUpload: document.getElementById('imageUpload'),
-            formImageBtn: document.getElementById('formImageBtn'),
             imageResolutionSlider: document.getElementById('imageResolution'),
             particleSizeSlider: document.getElementById('particleSize'),
             lerpSpeedSlider: document.getElementById('lerpSpeed'),
             bgToggle: document.getElementById('bgToggle'),
         };
+
+        function setButtonsDisabled(disabled) {
+            const buttons = [ui.formWordBtn, ui.formImageBtn, ui.releaseBtn];
+            buttons.forEach(button => {
+                button.disabled = disabled;
+                if (disabled) {
+                    button.classList.add('disabled');
+                } else {
+                    button.classList.remove('disabled');
+                }
+            });
+        }
 
         function setupEventListeners() {
             ui.wordInput.addEventListener('input', (e) => config.word = e.target.value);
@@ -320,7 +340,7 @@
                 resetBackgroundChars();
             });
             ui.bgToggle.addEventListener('change', (e) => {
-                backgroundChars.visible = e.target.checked;
+                if(backgroundChars) backgroundChars.visible = e.target.checked;
             });
             ui.fontSelect.addEventListener('change', (e) => config.fontName = e.target.value);
             ui.letterSpacingSlider.addEventListener('input', (e) => config.letterSpacing = Number(e.target.value));
@@ -350,30 +370,40 @@
             composer.addPass(renderScene);
             composer.addPass(bloomPass);
 
+            setButtonsDisabled(true);
             loadFonts();
             setupEventListeners();
+            window.addEventListener('resize', onWindowResize);
         }
 
         function loadFonts() {
             const fontLoader = new THREE.FontLoader();
+            
             const fontList = [
+                // FIX: Trying Gentilis for Vietnamese support.
+                { name: 'Tiếng Việt (Mềm mại)', value: 'gentilis_regular', url: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/gentilis_regular.typeface.json' },
                 { name: 'Mạnh mẽ', value: 'helvetiker_bold', url: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_bold.typeface.json' },
-                { name: 'Mềm mại', value: 'gentilis_regular', url: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/gentilis_regular.typeface.json' },
+                { name: 'Cổ điển', value: 'helvetiker_regular', url: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json' },
                 { name: 'Công nghệ', value: 'droid_sans_mono_regular', url: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/droid/droid_sans_mono_regular.typeface.json'}
             ];
             
             fontList.forEach(fontData => {
-                 const option = document.createElement('option');
-                 option.value = fontData.value;
-                 option.textContent = fontData.name;
-                 ui.fontSelect.appendChild(option);
+                  const option = document.createElement('option');
+                  option.value = fontData.value;
+                  option.textContent = fontData.name;
+                  ui.fontSelect.appendChild(option);
             });
+            ui.fontSelect.value = config.fontName;
 
             const fontPromises = fontList.map(fontData => {
                 return new Promise((resolve) => {
                     fontLoader.load(fontData.url, (font) => {
                         fonts.set(fontData.value, font);
                         resolve();
+                    }, undefined, (err) => {
+                        console.error(`Failed to load font: ${fontData.name}`, err);
+                        // Still resolve so the app doesn't hang, even if a font fails.
+                        resolve(); 
                     });
                 });
             });
@@ -381,6 +411,9 @@
             Promise.all(fontPromises).then(() => {
                 createMainParticles();
                 createBackgroundChars(config.backgroundDensity);
+                setButtonsDisabled(false);
+                // Automatically form the initial word once fonts are loaded
+                formWord();
                 animate();
             });
         }
@@ -405,6 +438,9 @@
                 originalPositions[i3] = x;
                 originalPositions[i3 + 1] = y;
                 originalPositions[i3 + 2] = z;
+                targetPositions[i3] = x;
+                targetPositions[i3 + 1] = y;
+                targetPositions[i3 + 2] = z;
                 initialColor.toArray(particleColors, i3);
             }
 
@@ -443,8 +479,15 @@
         }
 
         function resetBackgroundChars() {
-            if(backgroundChars) scene.remove(backgroundChars);
+            if(backgroundChars) {
+                scene.remove(backgroundChars);
+                backgroundChars.children.forEach(child => {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                });
+            }
             createBackgroundChars(config.backgroundDensity);
+            if (backgroundChars) backgroundChars.visible = ui.bgToggle.checked;
         }
 
         function samplePointsFromGeometry(geometry, count) {
@@ -458,6 +501,7 @@
                 point.addScaledVector(pA, a).addScaledVector(pB, b).addScaledVector(pC, c);
                 return point;
             }
+            if (position.count === 0) return points;
             for (let i = 0; i < count; i++) {
                 const index = Math.floor(Math.random() * (position.count / 3)) * 3;
                 const vA = new THREE.Vector3().fromBufferAttribute(position, index);
@@ -484,7 +528,10 @@
         }
 
         function formImage() {
-            if (!loadedImage) { alert("Vui lòng tải ảnh lên trước!"); return; }
+            if (!loadedImage) { 
+                console.warn("Vui lòng tải ảnh lên trước!"); 
+                return; 
+            }
             isForming = true;
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -532,7 +579,11 @@
             if (!config.word) return;
             isForming = true;
             const font = fonts.get(config.fontName);
-            if (!font) return;
+            if (!font) {
+                console.warn(`Font '${config.fontName}' not found. Aborting.`);
+                isForming = false;
+                return;
+            }
             const lines = config.word.split('\n');
             const geometries = [];
             let yOffset = 0;
@@ -541,21 +592,27 @@
                 let xOffset = 0;
                 const lineGeometries = [];
                 for (let i = 0; i < line.length; i++) {
-                    const char = line[i];
-                    if (char === ' ') { xOffset += 50; continue; }
-                    const charGeo = new THREE.TextGeometry(char, {font, size: 120, height: 5, curveSegments: 12, bevelEnabled: true, bevelThickness: 8, bevelSize: 4, bevelOffset: 0, bevelSegments: 5});
-                    charGeo.computeBoundingBox();
-                    const charWidth = charGeo.boundingBox.max.x - charGeo.boundingBox.min.x;
-                    charGeo.translate(xOffset, 0, 0);
-                    lineGeometries.push(charGeo);
-                    xOffset += charWidth + config.letterSpacing;
+                    try {
+                        const char = line[i];
+                        if (char === ' ') { xOffset += 50; continue; }
+                        const charGeo = new THREE.TextGeometry(char, {font, size: 120, height: 5, curveSegments: 12, bevelEnabled: true, bevelThickness: 8, bevelSize: 4, bevelOffset: 0, bevelSegments: 5});
+                        charGeo.computeBoundingBox();
+                        const charWidth = charGeo.boundingBox.max.x - charGeo.boundingBox.min.x;
+                        charGeo.translate(xOffset, 0, 0);
+                        lineGeometries.push(charGeo);
+                        xOffset += charWidth + config.letterSpacing;
+                    } catch (e) {
+                        console.warn(`Could not create geometry for character: ${line[i]}`, e);
+                    }
                 }
-                const lineGroup = new THREE.Group();
-                lineGeometries.forEach(g => lineGroup.add(new THREE.Mesh(g)));
-                const lineBox = new THREE.Box3().setFromObject(lineGroup);
-                const lineCenter = lineBox.getCenter(new THREE.Vector3());
-                lineGeometries.forEach(g => g.translate(-lineCenter.x, yOffset, 0));
-                geometries.push(...lineGeometries);
+                if(lineGeometries.length > 0) {
+                    const lineGroup = new THREE.Group();
+                    lineGeometries.forEach(g => lineGroup.add(new THREE.Mesh(g)));
+                    const lineBox = new THREE.Box3().setFromObject(lineGroup);
+                    const lineCenter = lineBox.getCenter(new THREE.Vector3());
+                    lineGeometries.forEach(g => g.translate(-lineCenter.x, yOffset, 0));
+                    geometries.push(...lineGeometries);
+                }
                 yOffset -= lineHeight;
             });
             if (geometries.length === 0) { releaseWord(); return; };
@@ -564,15 +621,24 @@
             const finalCenter = finalBox.getCenter(new THREE.Vector3());
             mergedGeometry.translate(-finalCenter.x, -finalCenter.y, -finalCenter.z);
             const sampledPoints = samplePointsFromGeometry(mergedGeometry, PARTICLE_COUNT);
+            if (sampledPoints.length === 0) { releaseWord(); return; }
+            
             const colors = mainParticles.geometry.attributes.color.array;
             const wordColor = new THREE.Color(config.color);
+            const baseColorHSL = {};
+            wordColor.getHSL(baseColorHSL);
+
             for (let i = 0; i < PARTICLE_COUNT; i++) {
                 const i3 = i * 3;
                 const point = sampledPoints[i % sampledPoints.length];
                 targetPositions[i3] = point.x;
                 targetPositions[i3 + 1] = point.y;
                 targetPositions[i3 + 2] = point.z;
-                wordColor.toArray(colors, i3);
+                
+                const particleColor = new THREE.Color();
+                const lightness = baseColorHSL.l + (Math.random() - 0.5) * 0.2;
+                particleColor.setHSL(baseColorHSL.h, baseColorHSL.s, Math.max(0, Math.min(1, lightness)));
+                particleColor.toArray(colors, i3);
             }
             mainParticles.geometry.attributes.color.needsUpdate = true;
             mergedGeometry.dispose();
@@ -581,8 +647,11 @@
 
         function releaseWord() {
             isForming = false;
-            for (let i = 0; i < PARTICLE_COUNT * 3; i++) {
-                targetPositions[i] = originalPositions[i];
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const i3 = i * 3;
+                targetPositions[i3] = originalPositions[i3];
+                targetPositions[i3 + 1] = originalPositions[i3 + 1];
+                targetPositions[i3 + 2] = originalPositions[i3 + 2];
             }
         }
 
